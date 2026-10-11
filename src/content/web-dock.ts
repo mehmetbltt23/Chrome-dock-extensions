@@ -1,4 +1,4 @@
-import type { AppMessage, AppResponse, AppWindowSnapshot, DockPosition, DockTabsState, Preferences, Shortcut, TabSnapshot } from '../types/models';
+import type { AppMessage, AppResponse, DockLaunchStatus, DockPosition, DockTabsState, Preferences, Shortcut, TabSnapshot } from '../types/models';
 
 (() => {
   const HOST_ID = 'docktabs-web-dock-host';
@@ -18,7 +18,7 @@ import type { AppMessage, AppResponse, AppWindowSnapshot, DockPosition, DockTabs
   const shadow = host.attachShadow({ mode: 'closed' });
   let state: DockTabsState | null = null;
   let tabs: TabSnapshot[] = [];
-  let appWindows: AppWindowSnapshot[] = [];
+  let launches: DockLaunchStatus[] = [];
   let faviconData = new Map<string, string>();
   let controlsOpen = false;
   let draggedShortcutId: string | null = null;
@@ -224,8 +224,8 @@ import type { AppMessage, AppResponse, AppWindowSnapshot, DockPosition, DockTabs
       .shortcut:active { cursor: grabbing; }
       .shortcut.dragging { opacity: .45; transform: scale(.92); }
       .shortcut.drop-target { outline: 2px dashed #b8aeff; outline-offset: 2px; }
-      .shortcut.active { box-shadow: 0 0 0 2px #9485ff; }
-      .shortcut.open::after { content: ''; position: absolute; width: 4px; height: 4px; right: 2px; bottom: 2px; border: 1px solid #1b1723; border-radius: 50%; background: #9c8cff; }
+      .shortcut.active { background: rgb(148 133 255 / 22%); box-shadow: 0 0 0 2px #9485ff; }
+      .shortcut.open::after, .shortcut.active::after { content: ''; position: absolute; left: 50%; bottom: 1px; width: 5px; height: 5px; border: 1px solid #1b1723; border-radius: 50%; background: #c9c0ff; transform: translateX(-50%); }
       .shortcut img { width: 62%; height: 62%; object-fit: contain; pointer-events: none; -webkit-user-drag: none; }
       .shortcut img + .initials { display: none; }
       .initials { font-size: calc(var(--dt-size) * .27); font-weight: 750; }
@@ -303,12 +303,13 @@ import type { AppMessage, AppResponse, AppWindowSnapshot, DockPosition, DockTabs
       button.setAttribute('aria-keyshortcuts', 'Alt+ArrowLeft Alt+ArrowRight Alt+ArrowUp Alt+ArrowDown Alt+Backspace Alt+Delete');
       button.dataset.shortcutId = shortcut.id;
       const matching = tabs.filter((tab) => matches(shortcut, tab));
-      if (opensAppWindow) {
-        const appWindow = appWindows.find((candidate) => candidate.shortcutId === shortcut.id);
-        if (appWindow?.focused === true) button.classList.add('active');
-        else if (appWindow !== undefined) button.classList.add('open');
-      } else if (matching.some((tab) => tab.active && tab.currentWindow)) button.classList.add('active');
-      else if (matching.length > 0) button.classList.add('open');
+      // The tab or window the Dock opened is authoritative, even after the site
+      // navigated away from the shortcut URL; URL matching covers tabs opened elsewhere.
+      const launch = launches.find((candidate) => candidate.shortcutId === shortcut.id);
+      if (launch?.status === 'ACTIVE') button.classList.add('active');
+      else if (launch !== undefined) button.classList.add('open');
+      else if (!opensAppWindow && matching.some((tab) => tab.active && tab.currentWindow)) button.classList.add('active');
+      else if (!opensAppWindow && matching.length > 0) button.classList.add('open');
       const fallback = document.createElement('span');
       fallback.className = 'initials';
       fallback.textContent = initials(shortcut.title);
@@ -487,7 +488,7 @@ import type { AppMessage, AppResponse, AppWindowSnapshot, DockPosition, DockTabs
 
   const refreshTabs = async (): Promise<void> => {
     try {
-      [tabs, appWindows] = await Promise.all([send<TabSnapshot[]>({ type: 'tabs/get' }), send<AppWindowSnapshot[]>({ type: 'apps/get' })]);
+      [tabs, launches] = await Promise.all([send<TabSnapshot[]>({ type: 'tabs/get' }), send<DockLaunchStatus[]>({ type: 'dock/status' })]);
       render();
     } catch { /* The dock stays usable without status decoration. */ }
   };

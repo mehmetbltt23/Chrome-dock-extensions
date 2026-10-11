@@ -45,17 +45,19 @@ The DockTabs toolbar icon opens Settings. The default shortcut is `Command+Shift
 2. Pick the Dock position (left, right, top, or bottom) and an icon size between 28 and 56 px.
 3. Open the Dock's `•••` menu and press `+` to add the current page. Each site's favicon is stored with its shortcut in `chrome.storage.local`, so it survives tab, service-worker, and Chrome restarts.
 4. Drag icons along the Dock to reorder them, or drag an icon onto the **Remove** target to delete it. Keyboard alternatives: `Option/Alt + arrow keys` moves the focused icon and `Option/Alt + Backspace` removes it.
-5. Under **Opening → Dock opens sites as**, choose **Pinned tab**, **App window**, or **Tab**.
+5. Under **Opening**, **Pin sites opened from the Dock** is on by default; turn it off to open regular tabs, or turn on **Open sites in app windows** instead.
 
 ![DockTabs Settings](docs/images/settings.png)
 
 ### Opening modes
 
+The Dock remembers the tab or window it opened for each shortcut, so a later click returns there even after the site redirected or you browsed to another page. The icon shows a dot while that tab or window is open, and a highlight while it is the selected tab in the current window.
+
 | Mode | First click | Later clicks |
 |---|---|---|
-| **Pinned tab** (default) | Opens the site as a compact pinned tab in the last used Chrome window. | Switches to that tab, pinning a matching tab that was not pinned yet. |
-| **App window** | Opens the site in its own window without a tab strip, sized like your last window. | Brings that window forward, restoring it if minimized, until you close it. |
-| **Tab** | Opens the site as a regular tab. | Switches to a matching tab when **Reuse matching tabs** is on. |
+| **Pinned tab** (default, **Pin sites opened from the Dock** on) | Opens the site as a compact pinned tab in the last used Chrome window. | Switches to that tab. After a Chrome restart, a restored pinned tab on the same site is reused. |
+| **App window** (**Open sites in app windows** on) | Opens the site in its own window without a tab strip, sized like your last window. | Brings that window forward, restoring it if minimized, until you close it. |
+| **Tab** (**Pin sites opened from the Dock** off) | Opens the site as a regular tab. | Switches to that tab when **Reuse matching tabs** is on. |
 
 ## Import and backup
 
@@ -91,5 +93,5 @@ Build validation checks that `dist/` contains only the required Manifest V3 entr
 - Chrome does not allow content scripts on its own new tab page, so DockTabs replaces it with `newtab.html`. Address-like input in its search box opens directly; anything else is searched with your default search engine. Because the override is declared in the manifest, Google's new tab page cannot be switched back from Settings.
 - Other `chrome://` pages, the Chrome Web Store, and Chrome's network and certificate error pages are protected, so the Dock cannot appear there. Server-rendered HTTP 404/500 pages on permitted origins do show it.
 - The Dock starts at `document_start`, before page resources load. A full-page navigation removes it with the old document and rebuilds it for the new one; this short gap cannot be avoided with an in-page dock.
-- App windows are tracked in `chrome.storage.session`, which Chrome clears when it quits. App windows that Chrome restores are adopted again by URL on the first Dock click.
+- Tabs and app windows opened from the Dock are tracked in `chrome.storage.session`, which Chrome clears when it quits. Pinned tabs and app windows that Chrome restores are adopted again by site on the first Dock click.
 - Links that an app window opens in a new tab (`target=_blank`) open in a regular Chrome window, as Chrome requires.

@@ -19,7 +19,7 @@ export function isAppMessage(value: unknown): value is AppMessage {
   if (!isRecord(value) || typeof value.type !== 'string') return false;
   switch (value.type) {
     case 'tabs/get':
-    case 'apps/get':
+    case 'dock/status':
     case 'tab/current':
     case 'tab/new':
     case 'shortcut/add-current':

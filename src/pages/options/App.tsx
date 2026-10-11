@@ -7,15 +7,10 @@ import { useTheme } from '../../features/theme/useTheme';
 import { useDockTabs } from '../../hooks/useDockTabs';
 import { sendMessage } from '../../services/chrome';
 import { saveState } from '../../storage/repository';
-import type { DockOpenMode, DockTabsState, ImportCandidate, Preferences, ShortcutGroup } from '../../types/models';
+import type { DockTabsState, ImportCandidate, Preferences, ShortcutGroup } from '../../types/models';
 
 type PendingImport = { kind: 'backup'; state: DockTabsState } | { kind: 'vivaldi'; candidates: ImportCandidate[] };
 const WEB_DOCK_ORIGINS = ['http://*/*', 'https://*/*'];
-const DOCK_OPEN_MODES: readonly [DockOpenMode, string, string][] = [
-  ['PINNED_TAB', 'Pinned tab', 'Sites become compact pinned tabs at the start of the tab strip. Clicking the Dock icon again returns to the same tab.'],
-  ['APP_WINDOW', 'App window', 'Sites open in their own window without tabs, like macOS apps. Clicking the Dock icon again brings that window back until you close it.'],
-  ['TAB', 'Tab', 'Sites open as regular tabs.'],
-];
 
 function Toggle({ label, hint, checked, onChange }: { label: string; hint: string; checked: boolean; onChange: (value: boolean) => void }): React.JSX.Element {
   return <label className="setting-row"><span><strong>{label}</strong><small>{hint}</small></span><input className="switch" type="checkbox" checked={checked} onChange={(event) => onChange(event.target.checked)} /></label>;
@@ -145,11 +140,8 @@ export function App(): React.JSX.Element {
         <div className="inline-form"><input value={newGroup} maxLength={80} placeholder="New group name" onChange={(event) => setNewGroup(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') addGroup(); }} /><button className="secondary-button" type="button" onClick={addGroup}>Create group</button></div>
       </Section>
       <Section eyebrow="Behavior" title="Opening">
-        <div className="field" role="group" aria-labelledby="dock-open-mode-label" aria-describedby="dock-open-mode-hint">
-          <span id="dock-open-mode-label">Dock opens sites as</span>
-          <div className="size-presets">{DOCK_OPEN_MODES.map(([mode, label]) => <button key={mode} type="button" aria-pressed={state.preferences.dockOpenMode === mode} className={state.preferences.dockOpenMode === mode ? 'selected' : ''} onClick={() => updatePreferences({ dockOpenMode: mode })}>{label}</button>)}</div>
-          <small id="dock-open-mode-hint">{DOCK_OPEN_MODES.find(([mode]) => mode === state.preferences.dockOpenMode)?.[2]}</small>
-        </div>
+        {state.preferences.dockOpenMode !== 'APP_WINDOW' && <Toggle label="Pin sites opened from the Dock" hint="Sites open as compact pinned tabs at the start of the tab strip. Turn off to open regular tabs. Clicking the Dock icon again returns to the same tab." checked={state.preferences.dockOpenMode === 'PINNED_TAB'} onChange={(value) => updatePreferences({ dockOpenMode: value ? 'PINNED_TAB' : 'TAB' })} />}
+        <Toggle label="Open sites in app windows" hint="Each site opens in its own window without a tab strip, like a macOS app, and the Dock brings it back until you close it." checked={state.preferences.dockOpenMode === 'APP_WINDOW'} onChange={(value) => updatePreferences({ dockOpenMode: value ? 'APP_WINDOW' : 'PINNED_TAB' })} />
         <Toggle label="Reuse matching tabs" hint="Focus an existing match instead of creating a duplicate." checked={state.preferences.reuseExistingTab} onChange={(value) => updatePreferences({ reuseExistingTab: value })} />
         <Toggle label="Search other windows" hint="Look beyond the current Chrome window for matches." checked={state.preferences.searchOtherWindows} onChange={(value) => updatePreferences({ searchOtherWindows: value })} />
       </Section>

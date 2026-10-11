@@ -1,21 +1,21 @@
 import { loadState, saveState } from '../storage/repository';
-import type { AppMessage, AppResponse, AppWindowSnapshot, Shortcut, TabSnapshot } from '../types/models';
-import { selectReusableTab } from '../domain/tab-selection';
+import type { AppMessage, AppResponse, DockLaunchStatus, Shortcut, TabSnapshot } from '../types/models';
 import { DockTabsError } from '../domain/errors';
 import { isAppMessage } from '../services/message-validation';
 import { moveShortcut, removeShortcut, upsertShortcut } from '../domain/state';
 import { validateShortcutUrl } from '../domain/url';
-import { findAdoptableWindow, parseAppWindowRegistry, withAppWindow, withoutWindow, type AppWindowRegistry } from '../domain/app-windows';
+import { findAdoptableWindow, launchStatuses, parseLaunchRegistry, pickDockTab, withLaunch, withoutTarget, withReplacedTarget, type LaunchRegistry } from '../domain/launch-registry';
 
 const WEB_DOCK_SCRIPT_ID = 'docktabs-web-dock';
 const WEB_DOCK_MATCHES = ['http://*/*', 'https://*/*'];
 // Session storage survives worker suspension but is cleared when Chrome quits,
-// matching the lifetime of the app windows it tracks.
+// matching the lifetime of the tab and window IDs it tracks.
 const APP_WINDOWS_KEY = 'docktabs.appWindows';
+const DOCK_TABS_KEY = 'docktabs.dockTabs';
 const faviconCache = new Map<string, Promise<string | null>>();
 let webDockSyncQueue: Promise<void> = Promise.resolve();
 let stateMutationQueue: Promise<void> = Promise.resolve();
-let appWindowQueue: Promise<void> = Promise.resolve();
+let launchQueue: Promise<void> = Promise.resolve();
 
 function queueStateMutation<T>(mutation: () => Promise<T>): Promise<T> {
   const task = stateMutationQueue.then(mutation);
@@ -125,26 +125,26 @@ async function focusTab(tab: TabSnapshot): Promise<TabSnapshot> {
   return requireSnapshot(updated);
 }
 
-function queueAppWindowMutation<T>(mutation: () => Promise<T>): Promise<T> {
-  const task = appWindowQueue.then(mutation);
-  appWindowQueue = task.then(() => undefined, () => undefined);
+function queueLaunchMutation<T>(mutation: () => Promise<T>): Promise<T> {
+  const task = launchQueue.then(mutation);
+  launchQueue = task.then(() => undefined, () => undefined);
   return task;
 }
 
-async function loadAppWindows(): Promise<AppWindowRegistry> {
-  const stored = await chrome.storage.session.get(APP_WINDOWS_KEY);
-  return parseAppWindowRegistry(stored[APP_WINDOWS_KEY]);
+async function loadRegistry(key: string): Promise<LaunchRegistry> {
+  const stored = await chrome.storage.session.get(key);
+  return parseLaunchRegistry(stored[key]);
 }
 
-async function saveAppWindows(registry: AppWindowRegistry): Promise<void> {
-  await chrome.storage.session.set({ [APP_WINDOWS_KEY]: registry });
+async function saveRegistry(key: string, registry: LaunchRegistry): Promise<void> {
+  await chrome.storage.session.set({ [key]: registry });
 }
 
-function forgetAppWindow(windowId: number): Promise<void> {
-  return queueAppWindowMutation(async () => {
-    const registry = await loadAppWindows();
-    const next = withoutWindow(registry, windowId);
-    if (Object.keys(next).length !== Object.keys(registry).length) await saveAppWindows(next);
+function updateRegistry(key: string, change: (registry: LaunchRegistry) => LaunchRegistry): Promise<void> {
+  return queueLaunchMutation(async () => {
+    const registry = await loadRegistry(key);
+    const next = change(registry);
+    if (JSON.stringify(next) !== JSON.stringify(registry)) await saveRegistry(key, next);
   });
 }
 
@@ -175,35 +175,33 @@ async function appWindowBounds(): Promise<Pick<chrome.windows.CreateData, 'left'
 // Dock shortcuts open like macOS apps: one tab-strip-free window per shortcut
 // that the Dock brings forward again until the user closes it.
 function openAppWindow(shortcut: Shortcut): Promise<TabSnapshot> {
-  return queueAppWindowMutation(async () => {
-    let registry = await loadAppWindows();
+  return queueLaunchMutation(async () => {
+    let registry = await loadRegistry(APP_WINDOWS_KEY);
     const knownId = registry[shortcut.id];
     if (knownId !== undefined) {
       const known = await findWindow(knownId);
       if (known?.type === 'popup') return focusAppWindow(known);
-      registry = withoutWindow(registry, knownId);
+      registry = withoutTarget(registry, knownId);
     }
     const popups = await chrome.windows.getAll({ populate: true, windowTypes: ['popup'] });
-    const candidates = popups.flatMap((popup) => popup.id === undefined ? [] : [{ windowId: popup.id, urls: (popup.tabs ?? []).map((tab) => tab.url ?? tab.pendingUrl ?? '') }]);
+    const candidates = popups.flatMap((popup) => popup.id === undefined ? [] : [{ id: popup.id, urls: (popup.tabs ?? []).map((tab) => tab.url ?? tab.pendingUrl ?? '') }]);
     const adoptedId = findAdoptableWindow(shortcut, candidates, registry);
     const adopted = popups.find((popup) => popup.id !== undefined && popup.id === adoptedId);
     if (adopted?.id !== undefined) {
-      await saveAppWindows(withAppWindow(registry, shortcut.id, adopted.id));
+      await saveRegistry(APP_WINDOWS_KEY, withLaunch(registry, shortcut.id, adopted.id));
       return focusAppWindow(adopted);
     }
     const created = await chrome.windows.create({ url: shortcut.url, type: 'popup', focused: true, ...(await appWindowBounds()) });
     const tab = created?.tabs?.[0];
     if (created?.id === undefined || tab === undefined) throw new DockTabsError('CHROME_FAILED', 'Chrome could not open the app window.');
-    await saveAppWindows(withAppWindow(registry, shortcut.id, created.id));
+    await saveRegistry(APP_WINDOWS_KEY, withLaunch(registry, shortcut.id, created.id));
     return requireSnapshot(tab);
   });
 }
 
-async function getAppWindows(): Promise<AppWindowSnapshot[]> {
-  const registry = await loadAppWindows();
-  const focused = await chrome.windows.getLastFocused().catch(() => undefined);
-  const focusedId = focused?.focused === true ? focused.id : undefined;
-  return Object.entries(registry).map(([shortcutId, windowId]) => ({ shortcutId, windowId, focused: windowId === focusedId }));
+async function getDockStatus(sender: chrome.runtime.MessageSender): Promise<DockLaunchStatus[]> {
+  const [tabRegistry, windowRegistry, tabs] = await Promise.all([loadRegistry(DOCK_TABS_KEY), loadRegistry(APP_WINDOWS_KEY), querySnapshots()]);
+  return launchStatuses(tabRegistry, windowRegistry, tabs, sender.tab?.windowId);
 }
 
 async function openShortcut(
@@ -220,22 +218,27 @@ async function openShortcut(
     if (tab === undefined) throw new DockTabsError('CHROME_FAILED', 'Chrome opened a window without a tab.');
     return requireSnapshot(tab);
   }
-  // Tabs belong in a tab-strip window, even when the Dock was clicked inside an app window.
-  const windowId = await lastNormalWindowId();
-  if (!forceNew && reuseExistingTab) {
-    // Only tab-strip windows are reused: a leftover app window would be brought
-    // forward instead of opening the tab the user asked for, and cannot be pinned.
-    const allTabs = await querySnapshots({ windowType: 'normal' });
-    const preferred = selectReusableTab(shortcut, allTabs, windowId, searchOtherWindows);
-    if (preferred !== undefined) {
-      const focused = await focusTab(preferred);
-      if (!pinTab || focused.pinned) return focused;
-      const pinned = await chrome.tabs.update(focused.id, { pinned: true }).catch(() => undefined);
-      return pinned === undefined ? focused : requireSnapshot(pinned);
+  return queueLaunchMutation(async () => {
+    // Tabs belong in a tab-strip window, even when the Dock was clicked inside an app window.
+    const windowId = await lastNormalWindowId();
+    const registry = await loadRegistry(DOCK_TABS_KEY);
+    if (!forceNew && reuseExistingTab) {
+      // Only tab-strip windows are reused: a leftover app window would be brought
+      // forward instead of opening the tab the user asked for, and cannot be pinned.
+      const allTabs = await querySnapshots({ windowType: 'normal' });
+      const preferred = pickDockTab(shortcut, allTabs, registry, windowId, searchOtherWindows, pinTab);
+      if (preferred !== undefined) {
+        await saveRegistry(DOCK_TABS_KEY, withLaunch(registry, shortcut.id, preferred.id));
+        const focused = await focusTab(preferred);
+        if (!pinTab || focused.pinned) return focused;
+        const pinned = await chrome.tabs.update(focused.id, { pinned: true }).catch(() => undefined);
+        return pinned === undefined ? focused : requireSnapshot(pinned);
+      }
     }
-  }
-  const created = await chrome.tabs.create({ url: shortcut.url, ...(windowId === undefined ? {} : { windowId }), active: true, pinned: pinTab });
-  return requireSnapshot(created);
+    const created = requireSnapshot(await chrome.tabs.create({ url: shortcut.url, ...(windowId === undefined ? {} : { windowId }), active: true, pinned: pinTab }));
+    await saveRegistry(DOCK_TABS_KEY, withLaunch(registry, shortcut.id, created.id));
+    return created;
+  });
 }
 
 // Like Launchpad, the new tab page steps aside once it has launched a site. Only
@@ -260,8 +263,8 @@ async function handleMessage(message: AppMessage, sender: chrome.runtime.Message
         const currentWindowId = activeTabs[0]?.windowId;
         return (await querySnapshots()).map((tab) => ({ ...tab, currentWindow: tab.windowId === currentWindowId }));
       }
-    case 'apps/get':
-      return getAppWindows();
+    case 'dock/status':
+      return getDockStatus(sender);
     case 'favicons/get': {
       const icons = await Promise.all(message.urls.map(async (url) => [url, await getFavicon(url)] as const));
       const result = Object.fromEntries(icons) as Record<string, string | null>;
@@ -388,19 +391,25 @@ async function broadcastTabsChanged(): Promise<void> {
 }
 
 chrome.tabs.onCreated.addListener(() => { void broadcastTabsChanged(); });
-chrome.tabs.onRemoved.addListener(() => { void broadcastTabsChanged(); });
+chrome.tabs.onRemoved.addListener((tabId) => {
+  void broadcastTabsChanged();
+  void updateRegistry(DOCK_TABS_KEY, (registry) => withoutTarget(registry, tabId)).catch(() => undefined);
+});
 chrome.tabs.onUpdated.addListener(() => { void broadcastTabsChanged(); });
 chrome.tabs.onActivated.addListener(() => { void broadcastTabsChanged(); });
 chrome.tabs.onMoved.addListener(() => { void broadcastTabsChanged(); });
 chrome.tabs.onAttached.addListener(() => { void broadcastTabsChanged(); });
 chrome.tabs.onDetached.addListener(() => { void broadcastTabsChanged(); });
-chrome.tabs.onReplaced.addListener(() => { void broadcastTabsChanged(); });
+chrome.tabs.onReplaced.addListener((addedTabId, removedTabId) => {
+  void broadcastTabsChanged();
+  void updateRegistry(DOCK_TABS_KEY, (registry) => withReplacedTarget(registry, removedTabId, addedTabId)).catch(() => undefined);
+});
 
 chrome.windows.onFocusChanged.addListener(() => { void broadcastTabsChanged(); });
 chrome.windows.onCreated.addListener(() => { void broadcastTabsChanged(); });
 chrome.windows.onRemoved.addListener((windowId) => {
   void broadcastTabsChanged();
-  void forgetAppWindow(windowId).catch(() => undefined);
+  void updateRegistry(APP_WINDOWS_KEY, (registry) => withoutTarget(registry, windowId)).catch(() => undefined);
 });
 chrome.action.onClicked.addListener(() => { void chrome.runtime.openOptionsPage(); });
 
