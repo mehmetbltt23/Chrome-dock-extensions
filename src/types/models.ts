@@ -76,10 +76,9 @@ export type TabSnapshot = {
   currentWindow: boolean;
 };
 
-export type AppWindowSnapshot = {
+export type DockLaunchStatus = {
   shortcutId: string;
-  windowId: number;
-  focused: boolean;
+  status: 'ACTIVE' | 'OPEN';
 };
 
 export type ShortcutStatus = 'ACTIVE' | 'OPEN' | 'CLOSED';
@@ -101,7 +100,7 @@ export type ImportCandidate = {
 
 export type AppMessage =
   | { type: 'tabs/get' }
-  | { type: 'apps/get' }
+  | { type: 'dock/status' }
   | { type: 'favicons/get'; urls: string[] }
   | { type: 'shortcut/open'; shortcut: Shortcut; forceNew?: boolean; newWindow?: boolean; appWindow?: boolean; pinTab?: boolean; reuseExistingTab: boolean; searchOtherWindows: boolean }
   | { type: 'tab/activate'; tabId: number; windowId: number }
