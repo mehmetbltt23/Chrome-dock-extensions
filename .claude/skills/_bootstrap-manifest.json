@@ -1,0 +1,45 @@
+{
+  "project": "DockTabs",
+  "bootstrapped_at": "2026-10-11T00:00:00+03:00",
+  "tech_stack": {
+    "node": { "version": "24.14.1", "verified": true, "source": "local runtime and nodejs.org release schedule", "verified_at": "2026-10-11" },
+    "npm": { "version": "11.11.0", "verified": true, "source": "local runtime", "verified_at": "2026-10-11" },
+    "typescript": { "version": "6.0.3", "verified": true, "source": "official TypeScript releases; newest version supported by typescript-eslint 8.70.0", "verified_at": "2026-10-11" },
+    "react": { "version": "19.3.0", "verified": true, "source": "npm registry", "verified_at": "2026-10-11" },
+    "vite": { "version": "8.3.4", "verified": true, "source": "npm registry", "verified_at": "2026-10-11" },
+    "dnd-kit-react": { "version": "0.5.0", "verified": true, "source": "npm registry and dndkit.com", "verified_at": "2026-10-11" },
+    "vitest": { "version": "5.0.3", "verified": true, "source": "official GitHub releases", "verified_at": "2026-10-11" },
+    "eslint": { "version": "10.10.0", "verified": true, "source": "npm registry", "verified_at": "2026-10-11" },
+    "chrome-side-panel": { "version": "Chrome 114+; getLayout Chrome 140+", "verified": true, "source": "developer.chrome.com", "verified_at": "2026-10-11" }
+  },
+  "skills_generated": [
+    { "name": "project-architecture", "path": ".claude/skills/project-architecture/", "layer": 0, "depends_on": [], "domains_covered": ["architecture"] },
+    { "name": "project-manager", "path": ".claude/skills/project-manager/", "layer": 0, "depends_on": ["project-architecture"], "domains_covered": ["governance"] },
+    { "name": "typescript-standards", "path": ".claude/skills/typescript-standards/", "layer": 1, "depends_on": ["project-architecture"], "domains_covered": ["typescript"] },
+    { "name": "dependency-management", "path": ".claude/skills/dependency-management/", "layer": 1, "depends_on": ["project-architecture"], "domains_covered": ["dependencies"] },
+    { "name": "security-hardening", "path": ".claude/skills/security-hardening/", "layer": 2, "depends_on": ["project-architecture"], "domains_covered": ["security"] },
+    { "name": "error-handling", "path": ".claude/skills/error-handling/", "layer": 2, "depends_on": ["typescript-standards"], "domains_covered": ["errors"] },
+    { "name": "data-validation", "path": ".claude/skills/data-validation/", "layer": 2, "depends_on": ["typescript-standards", "security-hardening"], "domains_covered": ["validation"] },
+    { "name": "privacy-compliance", "path": ".claude/skills/privacy-compliance/", "layer": 2, "depends_on": ["security-hardening"], "domains_covered": ["privacy"] },
+    { "name": "chrome-extension-patterns", "path": ".claude/skills/chrome-extension-patterns/", "layer": 3, "depends_on": ["project-architecture", "security-hardening"], "domains_covered": ["chrome", "mv3"] },
+    { "name": "react-patterns", "path": ".claude/skills/react-patterns/", "layer": 4, "depends_on": ["typescript-standards"], "domains_covered": ["react"] },
+    { "name": "state-management", "path": ".claude/skills/state-management/", "layer": 4, "depends_on": ["project-architecture", "react-patterns"], "domains_covered": ["state"] },
+    { "name": "ui-engineering", "path": ".claude/skills/ui-engineering/", "layer": 4, "depends_on": ["react-patterns"], "domains_covered": ["ui"] },
+    { "name": "accessibility-standards", "path": ".claude/skills/accessibility-standards/", "layer": 4, "depends_on": ["ui-engineering"], "domains_covered": ["accessibility"] },
+    { "name": "testing-strategy", "path": ".claude/skills/testing-strategy/", "layer": 5, "depends_on": ["project-architecture", "security-hardening"], "domains_covered": ["testing"] },
+    { "name": "performance-optimization", "path": ".claude/skills/performance-optimization/", "layer": 5, "depends_on": ["project-architecture"], "domains_covered": ["performance"] }
+  ],
+  "total_skills": 15,
+  "total_rules": 75,
+  "total_anti_patterns": 45,
+  "coverage": {
+    "security": true,
+    "performance": true,
+    "privacy": true,
+    "testing": true,
+    "accessibility": true,
+    "error_handling": true,
+    "documentation": true,
+    "observability": false
+  }
+}

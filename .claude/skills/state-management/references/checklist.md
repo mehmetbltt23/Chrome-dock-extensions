@@ -1,0 +1,17 @@
+# Pre-Commit Checklist — state-management
+
+## Automated
+
+- [ ] `npm run typecheck` passes with zero diagnostics.
+- [ ] `npm run lint` passes with zero warnings.
+- [ ] `npm test` passes without skipped critical flows.
+- [ ] `npm run build` creates a valid `dist/` package.
+- [ ] `npm run validate` confirms manifest files and permissions.
+
+## Manual
+
+- [ ] The change follows canonical persisted state and derived tab status rules.
+- [ ] No shortcut data is lost when tabs close or the worker restarts.
+- [ ] No new network, host permission, telemetry, or unsafe rendering exists.
+- [ ] Keyboard focus, visible status, error recovery, and Chrome limitations are clear.
+- [ ] Documentation reflects behavior and only measured performance is claimed.

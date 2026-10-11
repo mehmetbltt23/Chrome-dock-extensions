@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en" data-docktabs-surface="newtab">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="light dark" />
+    <title>New Tab</title>
+  </head>
+  <body>
+    <main class="new-tab">
+      <form id="search" class="search" role="search">
+        <label class="visually-hidden" for="query">Search the web or enter an address</label>
+        <input id="query" name="q" type="search" placeholder="Search or enter address" maxlength="2048" autocomplete="off" spellcheck="false" autofocus />
+      </form>
+      <div id="launchpad" class="launchpad"></div>
+      <p id="status" class="visually-hidden" role="status" aria-live="polite"></p>
+    </main>
+    <script type="module" src="/src/pages/newtab/main.ts"></script>
+  </body>
+</html>
