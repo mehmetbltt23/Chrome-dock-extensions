@@ -35,15 +35,15 @@ const EXAMPLES = [
   ['ChatGPT', 'https://chatgpt.com/', 'quick'],
   ['YouTube Music', 'https://music.youtube.com/', 'me'],
   ['NotebookLM', 'https://notebooklm.google.com/', 'me'],
-  ['Cloudflare', 'https://dash.cloudflare.com/', 'iceberg'],
-  ['Notion', 'https://www.notion.so/', 'iceberg'],
+  ['Cloudflare', 'https://dash.cloudflare.com/', 'work'],
+  ['Notion', 'https://www.notion.so/', 'work'],
 ] as const;
 
 export function createDefaultState(now = new Date().toISOString()): DockTabsState {
   const groups: ShortcutGroup[] = [
     { id: 'quick', title: 'Quick', position: 0, collapsed: false, createdAt: now, updatedAt: now },
     { id: 'me', title: 'Me', position: 1, collapsed: false, createdAt: now, updatedAt: now },
-    { id: 'iceberg', title: 'Iceberg Digital', position: 2, collapsed: false, createdAt: now, updatedAt: now },
+    { id: 'work', title: 'Work', position: 2, collapsed: false, createdAt: now, updatedAt: now },
   ];
   const counts = new Map<string, number>();
   const shortcuts: Shortcut[] = EXAMPLES.map(([title, url, groupId], index) => {

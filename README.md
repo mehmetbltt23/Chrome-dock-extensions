@@ -1,44 +1,79 @@
 # DockTabs
 
-DockTabs, normal Chrome web sayfalarının kenarında çalışan kalıcı ve ayarlanabilir bir Manifest V3 Web Dock eklentisidir. İlk Side Panel tasarımı paketlenmez; kullanıcı arayüzü yalnızca tek sıralı Web Dock ve ayarlar sayfasından oluşur.
+A macOS-style dock for Chrome. DockTabs keeps your favorite sites in a persistent, configurable Web Dock on the edge of every web page and on its own new tab page. Sites opened from the Dock behave like apps: open them once, then return to them from the Dock instead of hunting through tabs.
 
-## Kurulum
+DockTabs is a local-only Manifest V3 extension. It has no server, telemetry, or remote code.
 
-Gereksinimler: Chrome 114 veya üstü, Node.js 24.14.1 veya üstü ve npm 11.11.0 veya üstü.
+![New tab page with the Dock and a Launchpad-style grid of favorites](docs/images/newtab-dark.png)
+
+## Features
+
+- **Web Dock on every site.** A single-row dock on the left, right, top, or bottom edge of regular `http/https` pages, with magnification, auto-hide, and drag-to-reorder.
+- **App-like opening.** Choose how the Dock opens sites: as **pinned tabs** (default), as **app windows** without a tab strip, or as regular tabs. Clicking a Dock icon again returns to the site that is already open instead of opening a duplicate.
+- **New tab launcher.** The new tab page shows a search box, an always-visible Dock, and a Launchpad-style grid of your favorites grouped like the Dock. The empty new tab closes itself after it launches a site.
+- **Groups and backups.** Organize shortcuts into groups, export and import JSON backups, and import Vivaldi bookmarks.
+
+![The Web Dock at the bottom of a website](docs/images/web-dock.png)
+
+## Installation
+
+### Install the ready-made package (no build required)
+
+1. Download `docktabs-v<version>.zip` from the [latest release](https://github.com/mehmetbltt23/Chrome-dock-extensions/releases/latest) and unzip it.
+2. Open `chrome://extensions` and turn on **Developer mode** (top right).
+3. Click **Load unpacked** and select the unzipped folder. Keep the folder where it is; Chrome loads the extension from it.
+4. When Chrome asks whether to keep the changed new tab page, choose **Keep changes**.
+
+Chrome installs extensions without Developer mode only from the Chrome Web Store. The same zip file is the package to upload there.
+
+### Build from source
+
+Requirements: Chrome 114 or newer, Node.js 24.14.1 or newer, and npm 11.11.0 or newer.
 
 ```bash
-npm install
+npm ci
 npm run build
 ```
 
-Chrome'da `chrome://extensions` sayfasını açın, **Developer mode** seçeneğini etkinleştirin, **Load unpacked** düğmesine basın ve bu projenin `dist/` klasörünü seçin. Araç çubuğundaki DockTabs simgesi ayarlar sayfasını açar. Varsayılan komut macOS'ta `Command+Shift+D`, diğer platformlarda `Ctrl+Shift+D` şeklindedir; `chrome://extensions/shortcuts` üzerinden değiştirilebilir.
+Then load the project's `dist/` folder with **Load unpacked** as above. `npm run package` builds and zips `dist/` into `docktabs-v<version>.zip` for a release or a Chrome Web Store upload.
 
-## Kullanım
+The DockTabs toolbar icon opens Settings. The default shortcut is `Command+Shift+D` on macOS and `Ctrl+Shift+D` elsewhere; change it at `chrome://extensions/shortcuts`.
 
-1. DockTabs ayarlarında **Compact Web Dock** seçeneğini açın ve istenen web sitesi erişimini onaylayın.
-2. Dock'un yönünü sol, sağ, üst veya alt olarak seçin; ikon boyutunu 28–56 px arasında ayarlayın.
-3. Dock'taki `+` düğmesiyle açık sayfayı ekleyin. Site favicon'u bir görüntü verisi olarak kısayolla birlikte `chrome.storage.local` içinde saklanır; sekme, servis çalışanı veya Chrome yeniden başlatıldığında kaybolmaz.
-4. İkonları Dock üzerinde sürükleyerek sıralayın. Klavye alternatifi olarak odaktaki ikonu `Option/Alt + ok tuşları` ile taşıyın.
-5. `✎` düzenleme modunu açar; kırmızı `−` düğmesi seçilen kısayolu kaldırır. `⚙` ayarlar sayfasını açar.
+## Usage
 
-Bir kısayola tıklamak varsayılan olarak eşleşen açık sekmeyi bulup öne getirir; eşleşme yoksa yeni sekme açar. Bu davranış ve diğer pencerelerde arama ayarlardan değiştirilebilir.
+1. In Settings, turn on **Compact Web Dock** and approve website access.
+2. Pick the Dock position (left, right, top, or bottom) and an icon size between 28 and 56 px.
+3. Open the Dock's `•••` menu and press `+` to add the current page. Each site's favicon is stored with its shortcut in `chrome.storage.local`, so it survives tab, service-worker, and Chrome restarts.
+4. Drag icons along the Dock to reorder them, or drag an icon onto the **Remove** target to delete it. Keyboard alternatives: `Option/Alt + arrow keys` moves the focused icon and `Option/Alt + Backspace` removes it.
+5. Under **Opening → Dock opens sites as**, choose **Pinned tab**, **App window**, or **Tab**.
 
-## İçe aktarma ve yedekleme
+![DockTabs Settings](docs/images/settings.png)
 
-Vivaldi yer imleri HTML olarak içe aktarılabilir. Klasörler gruplara dönüştürülür, yalnızca güvenli `http/https` kayıtları kabul edilir ve dosya tamamen yerelde işlenir.
+### Opening modes
 
-**Export JSON backup** tüm sürümlü veriyi indirir. **Import JSON backup** önce özet gösterir ve onaydan sonra mevcut verinin yerini alır. İçe aktarma dosyaları 5 MB ile sınırlıdır.
+| Mode | First click | Later clicks |
+|---|---|---|
+| **Pinned tab** (default) | Opens the site as a compact pinned tab in the last used Chrome window. | Switches to that tab, pinning a matching tab that was not pinned yet. |
+| **App window** | Opens the site in its own window without a tab strip, sized like your last window. | Brings that window forward, restoring it if minimized, until you close it. |
+| **Tab** | Opens the site as a regular tab. | Switches to a matching tab when **Reuse matching tabs** is on. |
 
-## İzinler ve güvenlik
+## Import and backup
 
-- `tabs`: eşleşen sekmeyi bulmak ve etkinleştirmek için.
-- `storage`: kısayolları, kalıcı favicon verilerini, grupları ve tercihleri yerel Chrome profilinde saklamak için.
-- `favicon`: Chrome'un yerel `_favicon` kaynağından site ikonunu almak için.
-- `scripting`: paket içindeki Web Dock kodunu izin verilen normal web sayfalarına yerleştirmek için.
+Vivaldi bookmarks can be imported from their exported HTML file. Folders become groups, only safe `http/https` entries are accepted, and the file is processed locally.
 
-`http://*/*` ve `https://*/*` erişimi yalnızca Web Dock açılırken isteğe bağlı olarak talep edilir; kurulumda verilmez ve Dock kapatıldığında kaldırılır. `sidePanel`, `cookies`, `history`, `webRequest` veya zorunlu host izni yoktur. Telemetri, reklam, uzak kod ya da uygulama sunucusu kullanılmaz. Ayrıntı için [güvenlik notları](docs/SECURITY.md) belgesine bakın.
+**Export JSON backup** downloads all versioned data. **Import JSON backup** shows a summary first and replaces the current data only after you confirm. Import files are limited to 5 MB.
 
-## Test ve build
+## Permissions and security
+
+- `tabs`: find, activate, and pin the tab that matches a shortcut.
+- `storage`: keep shortcuts, stored favicons, groups, and preferences in the local Chrome profile, and track open app windows for the current browser session.
+- `favicon`: read site icons from Chrome's local `_favicon` resource.
+- `scripting`: inject the packaged Web Dock into permitted web pages.
+- `search`: send text typed into the new tab search box to your default search engine. Chrome shows no install warning for it.
+
+Access to `http://*/*` and `https://*/*` is optional. It is requested only when you turn on the Web Dock and is removed when you turn it off. DockTabs has no `cookies`, `history`, `webRequest`, or required host permission, and no telemetry, ads, remote code, or application server. See the [security notes](docs/SECURITY.md) for details.
+
+## Development
 
 ```bash
 npm run validate
@@ -48,16 +83,13 @@ npm test
 npm run build
 ```
 
-Build doğrulaması `dist/` paketinde yalnızca gerekli Manifest V3 girişlerinin bulunduğunu, Side Panel tanımı olmadığını, Web Dock scriptinin kendi kendine yeterli olduğunu ve servis çalışanında dinamik kod çalıştırma bulunmadığını kontrol eder.
+Build validation checks that `dist/` contains only the required Manifest V3 entries and the packaged new tab page, has no side panel, keeps the Web Dock script self-contained, and has no dynamic code execution in the service worker.
 
-## Chrome sınırları
+## Chrome limitations
 
-- Dock normal `http/https` belgelerinde `document_start` aşamasında, sayfa kaynakları yüklenmeden önce başlatılır. Sunucunun HTML olarak döndürdüğü HTTP 404/500 sayfalarında da çalışır.
-- Chrome yeni sekme sayfasına içerik scripti yerleştirmeye izin vermez. Bu yüzden DockTabs yeni sekme sayfasını kendi sayfasıyla (`newtab.html`) değiştirir: her zaman görünen Web Dock, bir arama kutusu ve favorilerin gruplarıyla gösterildiği Launchpad benzeri bir ızgara. Izgaradan ya da yeni sekmedeki Dock'tan bir site açıldığında boş kalan yeni sekme kapanır; penceredeki son sekmeyse açık kalır. Adrese benzeyen girdiler doğrudan açılır, diğerleri Chrome'da seçili varsayılan arama motoruyla aranır (`search` izni, kurulum uyarısı göstermez). Google'ın yeni sekme sayfası bu değişiklik manifest'te sabit olduğu için ayarlardan geri açılamaz; Chrome ilk seferde değişikliği geri alma seçeneği sunar.
-- Diğer `chrome://` sayfaları, Chrome Web Store ve Chrome'un ağ/sertifika hata ekranları korumalıdır; içerik scripti yerleştirilemediği için Web Dock bu ekranlarda gösterilemez.
-- Tam sayfa gezinmesinde eski belgeyle birlikte Dock kaldırılır ve yeni web belgesi başlarken yeniden kurulur. Bu aralık Web Dock mimarisinde tamamen yok edilemez; sekmeler arasında kesintisiz kalan Chrome yüzeyi Side Panel'dir.
-- Bir eklenti Chrome'un yerleşik sekme çubuğunu gizleyemez veya değiştiremez.
-- Bu yüzden Ayarlar → Opening → "Dock opens sites as" seçimi Dock'un siteleri nasıl açacağını belirler: **Pinned tab** (varsayılan), **App window** veya **Tab**.
-- **App window** modunda Dock kısayolları sekme yerine sekme çubuğu olmayan kendi uygulama penceresinde açılır. Dock'a tekrar tıklamak yeni pencere açmaz, mevcut pencereyi öne getirir veya küçültülmüşse geri açar. Pencere siz kapatana kadar açık kalır. Kısayol–pencere eşlemesi yalnızca `chrome.storage.session` içinde tutulur ve Chrome kapanınca silinir. Chrome'un geri yüklediği uygulama pencereleri ilk tıklamada URL eşleşmesiyle yeniden sahiplenilir.
-- **Pinned tab** modunda Dock'tan açılan siteler sabitlenmiş sekme olur; normal pencerelerdeki eşleşen sekme yeniden kullanılırken o da sabitlenir. Uygulama pencereleri sekme modlarında yeniden kullanılmaz, çünkü sabitlenemez ve sekme çubuğu yoktur. Dock bir uygulama penceresinin içinden kullanılsa da yeni sekmeler son kullanılan normal Chrome penceresinde açılır.
-- Uygulama penceresinden `target=_blank` ile açılan bağlantılar Chrome'un davranışı gereği normal bir tarayıcı penceresinde sekme olarak açılır.
+- An extension cannot hide or change Chrome's built-in tab strip. Pinned tabs and app windows are the closest supported ways to keep sites out of the way.
+- Chrome does not allow content scripts on its own new tab page, so DockTabs replaces it with `newtab.html`. Address-like input in its search box opens directly; anything else is searched with your default search engine. Because the override is declared in the manifest, Google's new tab page cannot be switched back from Settings.
+- Other `chrome://` pages, the Chrome Web Store, and Chrome's network and certificate error pages are protected, so the Dock cannot appear there. Server-rendered HTTP 404/500 pages on permitted origins do show it.
+- The Dock starts at `document_start`, before page resources load. A full-page navigation removes it with the old document and rebuilds it for the new one; this short gap cannot be avoided with an in-page dock.
+- App windows are tracked in `chrome.storage.session`, which Chrome clears when it quits. App windows that Chrome restores are adopted again by URL on the first Dock click.
+- Links that an app window opens in a new tab (`target=_blank`) open in a regular Chrome window, as Chrome requires.
